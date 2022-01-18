@@ -41,7 +41,6 @@ export interface CreepRequestOptions {
 
 export interface ZergOptions {
 	notifyWhenAttacked?: boolean;
-	// boostWishlist?: ResourceConstant[] | undefined;
 }
 
 export interface OverlordStats {
@@ -110,9 +109,8 @@ export abstract class Overlord {
 		this._zerg = {};
 		this._combatZerg = {};
 		this.recalculateCreeps();
-
 		this.creepUsageReport = _.mapValues(this._creeps, creep => undefined);
-		// this.boosts = _.mapValues(this._creeps, creep => undefined);
+
 		// Register the overlord on the colony overseer and on the overmind
 		Overmind.overlords[this.ref] = this;
 		Overmind.overseer.registerOverlord(this);
@@ -261,9 +259,6 @@ export abstract class Overlord {
 			this._zerg[role] = [];
 			this.synchronizeZerg(role, opts.notifyWhenAttacked);
 		}
-		// if (opts.boostWishlist) {
-		// 	this.boosts[role] = opts.boostWishlist;
-		// }
 		return this._zerg[role];
 	}
 
@@ -289,6 +284,16 @@ export abstract class Overlord {
 		_.remove(this._zerg[role], deadZerg => removeZergNames.includes(deadZerg.name));
 	}
 
+	getAllZerg(): Zerg[] {
+		const allZerg: Zerg[] = [];
+		for (const role in this._creeps) {
+			for (const zerg of this.zerg(role)) {
+				allZerg.push(zerg);
+			}
+		}
+		return allZerg;
+	}
+
 	/**
 	 * Wraps all creeps of a given role to CombatZerg objects and updates the contents in future ticks
 	 */
@@ -297,9 +302,6 @@ export abstract class Overlord {
 			this._combatZerg[role] = [];
 			this.synchronizeCombatZerg(role, opts.notifyWhenAttacked);
 		}
-		// if (opts.boostWishlist) {
-		// 	this.boosts[role] = opts.boostWishlist;
-		// }
 		return this._combatZerg[role];
 	}
 
@@ -329,6 +331,16 @@ export abstract class Overlord {
 		_.remove(this._combatZerg[role], deadZerg => removeZergNames.includes(deadZerg.name));
 	}
 
+	getAllCombatZerg(): CombatZerg[] {
+		const allCombatZerg: CombatZerg[] = [];
+		for (const role in this._creeps) {
+			for (const combatZerg of this.combatZerg(role)) {
+				allCombatZerg.push(combatZerg);
+			}
+		}
+		return allCombatZerg;
+	}
+
 	/**
 	 * Gets the "ID" of the outpost this overlord is operating in. 0 for owned rooms, >= 1 for outposts, -1 for other
 	 */
@@ -345,7 +357,7 @@ export abstract class Overlord {
 		for (const creep of idleCreeps) {
 			// TODO: check range of creep from overlord
 			setOverlord(creep, this);
-			reassigned++
+			reassigned++;
 			if (reassigned >= maxPerTick) {
 				break;
 			}
@@ -356,29 +368,6 @@ export abstract class Overlord {
 	protected creepReport(role: string, currentAmt: number, neededAmt: number) {
 		this.creepUsageReport[role] = [currentAmt, neededAmt];
 	}
-
-	// parkCreepsIfIdle(creeps: Zerg[], outsideHatchery = true) {
-	// 	for (const creep of creeps) {
-	// 		if (!creep) {
-	// 			console.log(`creeps: ${_.map(creeps, creep => creep.name)}`);
-	// 			continue;
-	// 		}
-	// 		if (creep.isIdle && creep.canExecute('move')) {
-	// 			if (this.colony.hatchery) {
-	// 				const hatcheryRestrictedRange = 6;
-	// 				if (creep.pos.getRangeTo(this.colony.hatchery.pos) < hatcheryRestrictedRange) {
-	// 					const hatcheryBorder = this.colony.hatchery.pos.getPositionsAtRange(hatcheryRestrictedRange);
-	// 					const moveToPos = creep.pos.findClosestByRange(hatcheryBorder);
-	// 					if (moveToPos) creep.goTo(moveToPos);
-	// 				} else {
-	// 					creep.park();
-	// 				}
-	// 			} else {
-	// 				creep.park();
-	// 			}
-	// 		}
-	// 	}
-	// }
 
 	/**
 	 * Requests a group of (2-3) creeps from a hatchery to be spawned at the same time. Using this with low-priority
@@ -504,64 +493,6 @@ export abstract class Overlord {
 		this.creepReport(setup.role, creepQuantity, quantity);
 	}
 
-	// /**
-	//  * Return whether you are capable of boosting a creep to the desired specifications
-	//  */
-	// shouldBoost(creep: Zerg, onlyBoostInSpawn = false): boolean {
-	// 	// Can't boost if there's no evolution chamber or TTL is less than threshold
-	// 	const colony = Overmind.colonies[creep.room.name] as Colony | undefined;
-	// 	const evolutionChamber = colony ? colony.evolutionChamber : undefined;
-	// 	if (!evolutionChamber ||
-	// 		(creep.ticksToLive && creep.ticksToLive < MIN_LIFETIME_FOR_BOOST * creep.lifetime)) {
-	// 		return false;
-	// 	}
-	//
-	// 	// EDIT: they removed in-spawn boosting... RIP :(
-	// 	// // If you're in a bunker layout at level 8 with max labs, only boost while spawning
-	// 	// if (onlyBoostInSpawn && this.colony.bunker && this.colony.level == 8 && this.colony.labs.length == 10) {
-	// 	// 	if (!creep.spawning) {
-	// 	// 		return false;
-	// 	// 	}
-	// 	// }
-	//
-	// 	// Otherwise just boost if you need it and can get the resources
-	// 	if (this.boosts[creep.roleName]) {
-	// 		const boosts = _.filter(this.boosts[creep.roleName]!, boost =>
-	// 			(creep.boostCounts[boost] || 0) < creep.getActiveBodyparts(BOOST_PARTS[boost]));
-	// 		if (boosts.length > 0) {
-	// 			return _.all(boosts, boost => evolutionChamber!.canBoost(creep.body, boost));
-	// 		}
-	// 	}
-	// 	return false;
-	// }
-	//
-	//
-	// /**
-	//  * Request a boost from the evolution chamber; should be called during init()
-	//  */
-	// private requestBoostsForCreep(creep: Zerg): void {
-	// 	const colony = Overmind.colonies[creep.room.name] as Colony | undefined;
-	// 	const evolutionChamber = colony ? colony.evolutionChamber : undefined;
-	// 	if (evolutionChamber && this.boosts[creep.roleName]) {
-	// 		const boosts = _.filter(this.boosts[creep.roleName]!, boost =>
-	// 			(creep.boostCounts[boost] || 0) < creep.getActiveBodyparts(BOOST_PARTS[boost]));
-	// 		for (const boost of boosts) {
-	// 			evolutionChamber.requestBoost(creep, boost);
-	// 		}
-	// 	}
-	// }
-	//
-	// /**
-	//  * Request any needed boosting resources from terminal network
-	//  */
-	// private requestBoosts(creeps: Zerg[]): void {
-	// 	for (const creep of creeps) {
-	// 		if (this.shouldBoost(creep)) {
-	// 			this.requestBoostsForCreep(creep);
-	// 		}
-	// 	}
-	// }
-
 	/**
 	 * Requests that should be handled for all overlords prior to the init() phase
 	 */
@@ -582,6 +513,16 @@ export abstract class Overlord {
 	abstract init(): void;
 
 	abstract run(): void;
+
+	/**
+	 * Contains logic for shutting down the overlord
+	 */
+	finish(successful: boolean): void {
+		for (const zerg of this.getAllZerg()) {
+			zerg.reassign(this.colony.overlords.default);
+		}
+		// TODO: CombatOverlord
+	}
 
 	/**
 	 * Handle boosting of a creep; should be called during run()
@@ -609,9 +550,8 @@ export abstract class Overlord {
 					return;
 				}
 			}
+
 		}
-
-
 	}
 
 	/**
@@ -642,40 +582,3 @@ export abstract class Overlord {
 
 }
 
-// export function getOverlord(creep: Zerg | Creep): Overlord | null {
-// 	if (creep.memory[_MEM.OVERLORD]) {
-// 		return Overmind.overlords[creep.memory[_MEM.OVERLORD]!] || null;
-// 	} else {
-// 		return null;
-// 	}
-// }
-//
-// export function setOverlord(creep: Zerg | Creep, newOverlord: Overlord | null) {
-// 	// Remove cache references to old assignments
-// 	const roleName = creep.memory.role;
-// 	const ref = creep.memory[_MEM.OVERLORD];
-// 	const oldOverlord: Overlord | null = ref ? Overmind.overlords[ref] : null;
-// 	if (ref && Overmind.cache.overlords[ref] && Overmind.cache.overlords[ref][roleName]) {
-// 		_.remove(Overmind.cache.overlords[ref][roleName], name => name == creep.name);
-// 	}
-// 	if (newOverlord) {
-// 		// Change to the new overlord's colony
-// 		creep.memory[_MEM.COLONY] = newOverlord.colony.name;
-// 		// Change assignments in memory
-// 		creep.memory[_MEM.OVERLORD] = newOverlord.ref;
-// 		// Update the cache references
-// 		if (!Overmind.cache.overlords[newOverlord.ref]) {
-// 			Overmind.cache.overlords[newOverlord.ref] = {};
-// 		}
-// 		if (!Overmind.cache.overlords[newOverlord.ref][roleName]) {
-// 			Overmind.cache.overlords[newOverlord.ref][roleName] = [];
-// 		}
-// 		Overmind.cache.overlords[newOverlord.ref][roleName].push(creep.name);
-// 	} else {
-// 		creep.memory[_MEM.OVERLORD] = null;
-// 	}
-// 	if (oldOverlord) oldOverlord.recalculateCreeps();
-// 	if (newOverlord) newOverlord.recalculateCreeps();
-// 	log.info(`${creep.name} has been reassigned from ${oldOverlord ? oldOverlord.print : 'IDLE'} ` +
-// 			 `to ${newOverlord ? newOverlord.print : 'IDLE'}`);
-// }

@@ -13,9 +13,12 @@ interface PowerZergMemory extends CreepMemory {
 @profile
 export abstract class PowerZerg extends AnyZerg {
 
-	isPowerZerg: true;
-	creep: PowerCreep;
 	memory: PowerZergMemory;
+
+	isPowerZerg: true;
+	isSpawned: boolean;
+
+	creep: PowerCreep;
 	className: PowerClassConstant;
 	deleteTime: number | undefined;
 	level: number;
@@ -33,24 +36,52 @@ export abstract class PowerZerg extends AnyZerg {
 		this.powers = powerCreep.powers;
 		this.shard = powerCreep.shard;
 		this.spawnCooldownTime = powerCreep.spawnCooldownTime;
-		if (!(this.shard && this.room)) {
-			// We're not spawned in the world
-			log.error(`Trying to instantiate power creep ${this.print} while not spawned in!`);
+		this.isSpawned = !!this.shard && !!this.ticksToLive;
+		// PowerZerg room is casted to its overlord's colony's room if it is not spawned in
+		if (this.room == undefined && this.overlord) {
+			this.room = this.overlord.colony.room;
 		}
+		if (this.pos == undefined && this.overlord) {
+			this.pos = this.overlord.colony.powerSpawn ? this.overlord.colony.powerSpawn.pos
+													   : this.overlord.colony.pos;
+		}
+		Overmind.powerZerg[this.name] = this;
 	}
 
 	refresh(): void {
-		super.refresh();
-		const powerCreep = Game.powerCreeps[this.name];
-		if (powerCreep && powerCreep.room && powerCreep.shard) {
+		// super.refresh(); // doesn't call super.refresh()
+		const powerCreep = Game.powerCreeps[this.name] as PowerCreep | undefined;
+		if (powerCreep) {
+			this.creep = powerCreep;
+			this.pos = powerCreep.pos;
+			this.nextPos = powerCreep.pos;
+			this.carry = powerCreep.carry;
+			this.store = powerCreep.store;
+			this.carryCapacity = powerCreep.carryCapacity;
+			this.hits = powerCreep.hits;
+			this.memory = powerCreep.memory;
+			this.room = powerCreep.room as Room; // not actually as Room
+			this.saying = powerCreep.saying;
+			this.ticksToLive = powerCreep.ticksToLive;
+			this.actionLog = {};
+			this.blockMovement = false;
 			this.deleteTime = powerCreep.deleteTime;
 			this.level = powerCreep.level;
 			this.powers = powerCreep.powers;
 			this.shard = powerCreep.shard;
 			this.spawnCooldownTime = powerCreep.spawnCooldownTime;
+			this.isSpawned = !!this.shard && !!this.ticksToLive;
+			if (this.room == undefined && this.overlord) {
+				this.room = this.overlord.colony.room;
+			}
+			if (this.pos == undefined && this.overlord) {
+				this.pos = this.overlord.colony.powerSpawn ? this.overlord.colony.powerSpawn.pos
+														   : this.overlord.colony.pos;
+			}
 		} else {
-			log.info(`${this.print} has despawned or been deleted; deleting from global and Overmind.powerZerg!`);
+			log.debug(`Deleting ${this.print} from global`);
 			delete Overmind.powerZerg[this.name];
+			delete global[this.name];
 		}
 	}
 
@@ -66,7 +97,7 @@ export abstract class PowerZerg extends AnyZerg {
 	/**
 	 * Enable power usage in this room. The room controller should be at adjacent tile.
 	 */
-	enableRoom(controller: StructureController): OK | ERR_NOT_OWNER | ERR_INVALID_TARGET | ERR_NOT_IN_RANGE {
+	enableRoom(controller: StructureController): ScreepsReturnCode {
 		return this.creep.enableRoom(controller);
 	}
 
@@ -81,21 +112,19 @@ export abstract class PowerZerg extends AnyZerg {
 	/**
 	 * Instantly restore time to live to the maximum using a Power Spawn or a Power Bank nearby.
 	 */
-	renew(target: StructurePowerBank | StructurePowerSpawn):
-		OK | ERR_NOT_OWNER | ERR_BUSY | ERR_INVALID_TARGET | ERR_NOT_IN_RANGE {
+	renew(target: StructurePowerBank | StructurePowerSpawn): ScreepsReturnCode {
 		return this.creep.renew(target);
 	}
 
-	// spawn(powerSpawn: StructurePowerSpawn):
-	// 	OK | ERR_NOT_OWNER | ERR_BUSY | ERR_INVALID_TARGET | ERR_TIRED | ERR_RCL_NOT_ENOUGH {
-	//
-	// }
+	spawn(powerSpawn: StructurePowerSpawn): ScreepsReturnCode {
+		return this.creep.spawn(powerSpawn);
+	}
 
 	/**
 	 * Upgrade the creep, adding a new power ability to it or increasing the level of the existing power.
 	 * You need one free Power Level in your account to perform this action.
 	 */
-	upgrade(power: PowerConstant): OK | ERR_NOT_OWNER | ERR_NOT_ENOUGH_RESOURCES | ERR_FULL | ERR_INVALID_ARGS {
+	upgrade(power: PowerConstant): ScreepsReturnCode {
 		return this.creep.upgrade(power);
 	}
 

@@ -222,6 +222,12 @@ export class Zerg extends AnyZerg {
 		return result;
 	}
 
+	goDismantle(target: Structure) {
+		if (this.dismantle(target) == ERR_NOT_IN_RANGE) {
+			this.goTo(target);
+		}
+	}
+
 	// drop(resourceType: ResourceConstant, amount?: number) {
 	// 	const result = this.creep.drop(resourceType, amount);
 	// 	if (!this.actionLog.drop) this.actionLog.drop = (result == OK);
@@ -529,14 +535,18 @@ export class Zerg extends AnyZerg {
 		return this.suicide();
 	}
 
-	/* Reassigns the creep to work under a new overlord and as a new role. */
-	reassign(newOverlord: Overlord | null, newRole: string, invalidateTask = true) {
+	/**
+	 * Reassigns the creep to work under a new overlord and as a new role.
+	 */
+	reassign(newOverlord: Overlord | null, newRole?: string, invalidateTask = true) {
 		this.overlord = newOverlord;
 		if (newOverlord && newOverlord.colony && this.colony != newOverlord.colony) {
 			this.colony = newOverlord.colony;
 		}
-		this.roleName = newRole;
-		this.memory.role = newRole;
+		if (newRole) {
+			this.roleName = newRole;
+			this.memory.role = newRole;
+		}
 		if (invalidateTask) {
 			this.task = null;
 		}
